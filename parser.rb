@@ -12,7 +12,7 @@ Choice.options do
     short '-u'
     long '--url=URL'
     desc 'This is the address of the page we need'
-    validate /^https:\/\/cars\.av\.by\//
+    validate /^https:\/\/cars\.av\.by/
   end
 
   option :url_type do

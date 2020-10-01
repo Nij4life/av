@@ -17,6 +17,9 @@ module AV
 
     def search
       controller(@url)
+      total = 0
+      @categories.values.each {|el| total += el[:products].size}
+      puts "Total count products: #{total}"
     end
 
     private
@@ -62,6 +65,7 @@ module AV
     end
 
     def controller(url)
+      return false unless url['https://cars.av.by']
       puts "Захожу на страницу по ссылке: #{url}"
       page = get_nok(url)
       category_name = get_category_name(page)
@@ -74,15 +78,18 @@ module AV
         links.each {|link| controller(link) }
       end
 
-      unless @recursive
-        extract_products_page(category_name, page) unless @skip_products
-        update_categories(category_name)
-      else
-        if category_name.include?('->')
-          extract_products_page(category_name, page) unless @skip_products
-          update_categories(category_name)
-        end
-      end
+      extract_products_page(category_name, page) unless @skip_products
+      update_categories(category_name)
+
+      #unless @recursive
+      #  extract_products_page(category_name, page) unless @skip_products
+      #  update_categories(category_name)
+      #else
+      #  if category_name.include?('->')
+      #    extract_products_page(category_name, page) unless @skip_products
+      #    update_categories(category_name)
+      #  end
+      #end
 
     end
 
