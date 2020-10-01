@@ -1,0 +1,53 @@
+require_relative 'modules/av'
+require 'choice'
+
+#Choice
+
+# Хотелось бы передавать boolean в new. Но Choice принимает [string, integer, float, symbol]
+Choice.options do
+  header ''
+  header 'Specific options:'
+
+  option :url do
+    short '-u'
+    long '--url=URL'
+    desc 'This is the address of the page we need'
+    default 'https://av.by/'
+  end
+
+  option :url_type do
+    short '-t'
+    long '--url_type=URL_TYPE'
+    desc 'This is the information type from page which we need. (categories or products)'
+    default 'categories'
+  end
+
+  option :recursive do
+    short '-r'
+    long '--recursive=RECURSIVE'
+    desc 'You need recursive descent for subcategories. (true or false)'
+    default 'false'
+  end
+
+  option :skip_products do
+    short '-s'
+    long '--skip_products=SKIP_PRODUCTS'
+    desc 'Skip collecting product data. (true or false)'
+    default 'true'
+  end
+
+  separator ''
+  separator 'Common options: '
+
+  option :help do
+    short '-h'
+    long '--help'
+    desc 'Show this message'
+  end
+end
+
+puts Choice.choices[:help]
+
+av = AV::AV_parser.new(Choice.choices)
+
+av.search
