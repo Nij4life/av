@@ -38,6 +38,18 @@ Choice.options do
 
   separator ''
   separator 'Common options: '
+  separator '-u or --url   # Url адрес нужной нам категории'
+  separator '-t or --url_type   # Тип переданного url адреса (category or product)'
+  separator '-r or --recursive   # Опция рекурсивного обхода дерева категорий (true or false)'
+  separator '-s or --skip_products   # Опция для указания, пропустить ли скачивание продуктов (true or false)'
+  separator 'По умолчанию при запуске:  # -u https://cars.av.by/ -t category -r false -s false'
+  separator 'Examples: '
+  separator 'ruby parser.rb -r true   # Собрать все дерево категорий'
+  separator 'ruby parser.rb -r true -s false   # Собрать все дерево категорий и сохранить продукты'
+  separator 'ruby parser.rb -u https://cars.av.by/acura   # Обновить категорию acura'
+  separator 'ruby parser.rb -u https://cars.av.by/acura -r true   # Собрать дерево подкатегорий для acura'
+  separator 'ruby parser.rb -u https://cars.av.by/acura -r true -s false   # Собрать дерево подкатегорий для acura и сохранить продукты'
+  separator 'ruby parser.rb -u https://cars.av.by/acura/mdx -s false   # Обновить категорию acura -> mdx и скачать с нее продукты'
 
   option :help do
     short '-h'
