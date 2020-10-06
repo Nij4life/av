@@ -43,6 +43,7 @@ Choice.options do
   end
 
   separator ''
+
   separator 'Examples: '
   separator 'ruby parser.rb -u https://cars.av.by -t categories -r true -s true          # Собрать все дерево категорий'
   separator 'ruby parser.rb -u https://cars.av.by -t categories -r true                  # Собрать все дерево категорий и сохранить продукты'
@@ -50,6 +51,7 @@ Choice.options do
   separator 'ruby parser.rb -u https://cars.av.by/acura -t categories -r true -s true    # Собрать дерево подкатегорий для "acura"'
   separator 'ruby parser.rb -u https://cars.av.by/acura -t categories -r true            # Собрать дерево подкатегорий для "acura" и сохранить продукты'
   separator 'ruby parser.rb -u https://cars.av.by/acura/mdx -t categories                # Собрать категорию "acura -> mdx" и сохранить продукты'
+
 end
 
 puts Choice.choices[:help]
