@@ -37,7 +37,6 @@ Choice.options do
   end
 
   option :help do
-    short '-h'
     long '--help'
     desc 'Show this message'
   end
@@ -58,6 +57,6 @@ puts Choice.choices[:help]
 
 av = AV::AV_parser.new(Choice.choices)
 
-av.search
+av.start
 
 # Добавить отловить ошибку если url кривой, или ничего не найдено и т д. Это будет после запроса к nokogiry

@@ -15,8 +15,8 @@ module AV
       @categories = Hash.new()
     end
 
-    def search
-      controller(@url)
+    def start
+      search(@url)
       total = 0
       @categories.values.each {|el| total += el[:products].size}
       puts "Total count products: #{total}"
@@ -64,7 +64,7 @@ module AV
         end.downcase
     end
 
-    def controller(url)
+    def search(url)
       return false unless url['https://cars.av.by']
       puts "Захожу на страницу по ссылке: #{url}"
       page = get_nok(url)
@@ -75,21 +75,11 @@ module AV
       if @recursive
         categories = get_category(page)
         links = categories.map {|nod| get_value(nod, './a/@href') }
-        links.each {|link| controller(link) }
+        links.each {|link| search(link) }
       end
 
       extract_products_page(category_name, page) unless @skip_products
       update_categories(category_name)
-
-      #unless @recursive
-      #  extract_products_page(category_name, page) unless @skip_products
-      #  update_categories(category_name)
-      #else
-      #  if category_name.include?('->')
-      #    extract_products_page(category_name, page) unless @skip_products
-      #    update_categories(category_name)
-      #  end
-      #end
 
     end
 
@@ -124,6 +114,7 @@ module AV
       end
       @categories[category_name][:products] = products.flatten # Проверить точно ли он нужен !!!!!!!!!!!!!!!!!!!!
       puts "#{category_name}: extract #{@categories[category_name][:products].size} products"
+
     end
   end
 end
