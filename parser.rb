@@ -1,6 +1,6 @@
 require_relative 'modules/av'
 require 'choice'
-
+require 'uri'
 #Choice
 
 # Хотелось бы передавать boolean в new. Но Choice принимает [string, integer, float, symbol]
@@ -53,10 +53,11 @@ Choice.options do
 
 end
 
-puts Choice.choices[:help]
+# method validate in Choice
+abort('Неверные параметры. Запустите опцию --help для информации.') if Choice.choices[:url].nil? || Choice.choices[:url_type].nil?
 
 av = AV::AV_parser.new(Choice.choices)
-
 av.start
 
+# Может быть присылать сюда название брэда? т.к. /acura or /acura/mdx   мне нужно приклеивать в url_root
 # Добавить отловить ошибку если url кривой, или ничего не найдено и т д. Это будет после запроса к nokogiry

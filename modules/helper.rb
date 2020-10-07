@@ -1,9 +1,14 @@
 ﻿require 'curb'
 require 'nokogiri'
+require 'uri'
 
 module Helper
   def true?(obj)
     obj.to_s.downcase == "true"
+  end
+
+  def get_uri(url)
+    URI(url)
   end
 
   def get_nok(url)

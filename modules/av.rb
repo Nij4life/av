@@ -4,11 +4,12 @@ require_relative 'helper'
 module AV
   class AV_parser
     @@debag = true
+    @@url_root = 'https://cars.av.by'
     include Helper
     attr_reader :result
 
     def initialize(params)
-      @url = params[:url]
+      @uri = get_uri(params[:url])
       @url_type = params[:url]
       @recursive = true?(params[:recursive])
       @skip_products = true?(params[:skip_products])
@@ -16,10 +17,7 @@ module AV
     end
 
     def start
-      search(@url)
-      total = 0
-      @categories.values.each {|el| total += el[:products].size}
-      puts "Total count products: #{total}"
+      search(@uri.to_s)
     end
 
     private
@@ -43,38 +41,45 @@ module AV
     end
 
     def get_category(nok)
-      query_get_elements(nok, "//ul[@class='brandslist']/li").to_a
+      query_get_elements(nok, ".//li[@class='catalog__item']").to_a
     end
 
     def add_category(category_name, url)
       @categories = @categories.merge({"#{category_name}" => {url: url, products: []} })
-      #puts "@categories.size: #{@categories.size}"
     end
 
     def get_category_name(page)
-      nodes = query_get_elements(page, "//ul[@class='breadcrumb-list']/li").to_a
-      size = nodes.size <=> 2
-      case size
-      when -1 then ''
-      when 0 then nodes[1].text.strip.downcase
+      nodes = query_get_elements(page, "//li[@class='breadcrumb-item']").to_a
+
+      case nodes.size
+      when 0 then 'ALL'
+      when 1
+        words = query_get_elements(nodes.pop, './span').text.split(' ') ## Убрать дублирование!
+        words.slice!(1..words.size).join('->')
       else
-        nodes.shift
-        nodes[0] = query_get_elements(nodes[0], ".//span[@class='text-capitalize']")
-        nodes.map {|el| el.text.strip}.join(' -> ')
+        words = query_get_elements(nodes.pop, './span').text.split(' ')
+        words.slice!(1..words.size).join('->')
         end.downcase
     end
 
     def search(url)
-      return false unless url['https://cars.av.by']
-      puts "Захожу на страницу по ссылке: #{url}"
+      unless url[@@url_root]
+        puts "\n Страница не содержит корневого url!\n"
+        return false
+      end
+
       page = get_nok(url)
       category_name = get_category_name(page)
+      puts "Захожу на страницу по ссылке: #{url}"
 
       add_category(category_name, url) unless @categories.include?(category_name)
 
       if @recursive
         categories = get_category(page)
-        links = categories.map {|nod| get_value(nod, './a/@href') }
+        links = categories.map do |nod|
+          @uri.path = get_value(nod, './a/@href')
+          @uri.to_s
+        end
         links.each {|link| search(link) }
       end
 
@@ -84,7 +89,7 @@ module AV
     end
 
     def update_categories(category_name)
-      #puts "category_name #{category_name} can be update" # Вместо вывода записывать в базу
+      # Записывать в базу
     end
 
     def get_next_pages(current_page)
@@ -114,7 +119,6 @@ module AV
       end
       @categories[category_name][:products] = products.flatten # Проверить точно ли он нужен !!!!!!!!!!!!!!!!!!!!
       puts "#{category_name}: extract #{@categories[category_name][:products].size} products"
-
     end
   end
 end
