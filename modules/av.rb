@@ -12,16 +12,23 @@ module AV
     attr_reader :result
 
     def initialize(params)
-      @uri = get_uri(params[:url])
-      @url_type = params[:url]
+      # @uri = get_uri(params[:url])
+      @start_url = params[:url]
+      @url_type = params[:url_type]
       @recursive = true?(params[:recursive])
       @skip_products = true?(params[:skip_products])
       @categories = Hash.new()
+      @main_categories_info = []
     end
 
     def start
-      save_main_categories_info
-      search(@uri.to_s)
+      #  Наверное тут нужно и разделить качать все категории или это подкатегория !
+
+      # save_main_categories_info
+      # test
+
+      search(@start_url)
+      # pp @categories
 
       #page = get_nok(@uri.to_s)
       #category_name = get_category_name(page)
@@ -56,7 +63,14 @@ module AV
     end
 
     def add_category(category_name, url)
-      @categories = @categories.merge({"#{category_name}" => {url: url, products: []}})
+      # на момент добавления категории у меня уже есть инфа o main categories!
+      # не проверял с All !
+
+      # object_info = category_name['->'] ? {url: url} : @main_categories_info.select { |cat| cat["label"] == category_name.capitalize }[0]
+      # @categories = @categories.merge({"#{category_name}" => {info: object_info, products: []}})
+
+      # НУЖНО достать id и модель если есть
+      @categories = @categories.merge({"#{category_name}" => {info: object_info, products: []}})
     end
 
     def get_category_name(page)
@@ -65,9 +79,10 @@ module AV
       case nodes.size
       when 0 then
         'ALL'
-      when 1
-        words = query_get_elements(nodes.pop, './span').text.split(' ') ## Убрать дублирование!
-        words.slice!(1..words.size).join('->')
+        #when 1
+        #  words = query_get_elements(nodes.pop, './span').text.split(' ') ## Убрать дублирование!
+        #  words.slice!(1..words.size).join('->')
+        #  binding.pry
       else
         words = query_get_elements(nodes.pop, './span').text.split(' ')
         words.slice!(1..words.size).join('->')
@@ -80,9 +95,15 @@ module AV
         return false
       end
 
+      uri = get_uri(url)
+
+      # ВОЗМОЖНО запускать тут landing, если это не ALL
+      r = testM(uri.path)
+
       page = get_nok(url)
-      category_name = get_category_name(page)
-      puts "Захожу на страницу по ссылке: #{url}"
+      category_name = get_category_name(page) # можно брать из uri.path !
+
+      puts "Захожу на страницу по ссылке: #{url} ; категория: #{category_name}"
 
       add_category(category_name, url) unless @categories.include?(category_name)
 
@@ -96,7 +117,7 @@ module AV
       end
 
       # extract_products_page(category_name, page) unless @skip_products
-      extract_products(@uri.path) unless @skip_products
+      # extract_products(category_name) unless @skip_products
       # update_categories(category_name)
 
     end
@@ -146,7 +167,15 @@ module AV
       obj
     end
 
-    def extract_products(path)
+    def testM(path)
+      response = Curl.get("https://api.av.by/offer-types/cars/landings#{path}") do |curl|
+        add_headers(curl)
+      end
+      result = JSON response.body_str
+      binding.pry
+    end
+
+    def extract_products(category_name)
       post_body = {
           "page" => 1,
           "properties" =>
