@@ -62,15 +62,17 @@ module AV
       query_get_elements(nok, ".//li[@class='catalog__item']").to_a
     end
 
-    def add_category(category_name, url)
-      # на момент добавления категории у меня уже есть инфа o main categories!
-      # не проверял с All !
+    def add_category(category_name, landing_result)
+      str = landing_result["initialValue"]
+      id_list = str.scan(/=\d+/).map {|id| id[/\d+/]}
 
-      # object_info = category_name['->'] ? {url: url} : @main_categories_info.select { |cat| cat["label"] == category_name.capitalize }[0]
-      # @categories = @categories.merge({"#{category_name}" => {info: object_info, products: []}})
+      part_request_body = id_list.size == 1 ?
+                              [{"name" => "brand", "value" => id_list[0]}] :
+                              [{"name" => "brand", "value" => id_list[0]}, {"name" => "model", "value" => id_list[1]}]
 
-      # НУЖНО достать id и модель если есть
-      @categories = @categories.merge({"#{category_name}" => {info: object_info, products: []}})
+      category = {'part_request_body': part_request_body, products: []}
+      @categories = @categories.merge({"#{category_name}" => category })
+      category
     end
 
     def get_category_name(page)
@@ -98,14 +100,14 @@ module AV
       uri = get_uri(url)
 
       # ВОЗМОЖНО запускать тут landing, если это не ALL
-      r = testM(uri.path)
+      landing_result = testM(uri.path)
 
       page = get_nok(url)
       category_name = get_category_name(page) # можно брать из uri.path !
 
       puts "Захожу на страницу по ссылке: #{url} ; категория: #{category_name}"
 
-      add_category(category_name, url) unless @categories.include?(category_name)
+      category = add_category(category_name, landing_result) unless @categories.include?(category_name)
 
       if @recursive
         categories = get_categories(page)
@@ -116,6 +118,7 @@ module AV
         links.each { |link| search(link) }
       end
 
+      extract_products(category) unless @skip_products
       # extract_products_page(category_name, page) unless @skip_products
       # extract_products(category_name) unless @skip_products
       # update_categories(category_name)
@@ -171,17 +174,17 @@ module AV
       response = Curl.get("https://api.av.by/offer-types/cars/landings#{path}") do |curl|
         add_headers(curl)
       end
-      result = JSON response.body_str
-      binding.pry
+      JSON response.body_str
+      # ["blocks", "count", "pageCount", "page", "adverts", "sorting", "currentSorting", "advertsPerPage", "initialValue", "extended", "seo"]
     end
 
-    def extract_products(category_name)
+    def extract_products(category) # ТУТ нужно извлекать продукты !
       post_body = {
           "page" => 1,
           "properties" =>
               [{"name" => "brands",
                 "property" => 5,
-                "value" => [[{"name" => "brand", "value" => 1444}]]},
+                "value" => [category[:part_request_body]]},
                {"name" => "price_currency", "value" => 2}]}
 
       http = Curl.post('https://api.av.by/offer-types/cars/filters/main/apply', post_body.to_json) do |curl|
@@ -189,7 +192,7 @@ module AV
       end
 
       result = JSON http.body_str
-
+                    # ДОБАВИТЬ ПРОХОД ПО ITEMS + учесть что 1ую страницу я уже парсил !
     end
   end
 
