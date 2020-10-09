@@ -28,7 +28,8 @@ module AV
       # test
 
       search(@start_url)
-      # pp @categories
+
+      @categories.each_pair {|name, value| puts "#{name} : #{value[:products].size} products"}
 
       #page = get_nok(@uri.to_s)
       #category_name = get_category_name(page)
@@ -64,14 +65,14 @@ module AV
 
     def add_category(category_name, landing_result)
       str = landing_result["initialValue"]
-      id_list = str.scan(/=\d+/).map {|id| id[/\d+/]}
+      id_list = str.scan(/=\d+/).map { |id| id[/\d+/] }
 
       part_request_body = id_list.size == 1 ?
                               [{"name" => "brand", "value" => id_list[0]}] :
                               [{"name" => "brand", "value" => id_list[0]}, {"name" => "model", "value" => id_list[1]}]
 
       category = {'part_request_body': part_request_body, products: []}
-      @categories = @categories.merge({"#{category_name}" => category })
+      @categories = @categories.merge({"#{category_name}" => category})
       category
     end
 
@@ -110,15 +111,13 @@ module AV
       category = add_category(category_name, landing_result) unless @categories.include?(category_name)
 
       if @recursive
-        categories = get_categories(page)
-        links = categories.map do |nod|
-          @uri.path = get_value(nod, './a/@href')
-          @uri.to_s
-        end
+        links = landing_result['seo']['links'].map { |cat| cat['url'] }
+        # return if links.empty? # Вроде нет разницы ... ?!
         links.each { |link| search(link) }
       end
 
-      extract_products(category) unless @skip_products
+
+      extract_products(landing_result, category) unless @skip_products
       # extract_products_page(category_name, page) unless @skip_products
       # extract_products(category_name) unless @skip_products
       # update_categories(category_name)
@@ -143,12 +142,12 @@ module AV
       pages
     end
 
-    def save_main_categories_info
-      response = Curl.get('https://api.av.by/offer-types/cars/filters/main/init') do |curl|
-        add_headers(curl)
-      end
-      @main_categories_info = JSON(response.body_str)['seo']['links']
-    end
+    # def save_main_categories_info
+    #   response = Curl.get('https://api.av.by/offer-types/cars/filters/main/init') do |curl|
+    #     add_headers(curl)
+    #   end
+    #   @main_categories_info = JSON(response.body_str)['seo']['links']
+    # end
 
     def add_headers(obj)
       obj.headers['Accept'] = '*/*'
@@ -178,21 +177,38 @@ module AV
       # ["blocks", "count", "pageCount", "page", "adverts", "sorting", "currentSorting", "advertsPerPage", "initialValue", "extended", "seo"]
     end
 
-    def extract_products(category) # ТУТ нужно извлекать продукты !
+    def create_post_body(page_number, part_request_body)
       post_body = {
-          "page" => 1,
-          "properties" =>
-              [{"name" => "brands",
-                "property" => 5,
-                "value" => [category[:part_request_body]]},
-               {"name" => "price_currency", "value" => 2}]}
+          "page" => page_number,
+          "properties" => [
+              {"name" => "brands", "property" => 5, "value" => [part_request_body]},
+              {"name" => "price_currency", "value" => 2}
+          ]
+      }
+    end
+
+    def send_new_request(page_number, part_request_body)
+      post_body = create_post_body(page_number, part_request_body)
 
       http = Curl.post('https://api.av.by/offer-types/cars/filters/main/apply', post_body.to_json) do |curl|
         add_headers(curl)
       end
 
-      result = JSON http.body_str
-                    # ДОБАВИТЬ ПРОХОД ПО ITEMS + учесть что 1ую страницу я уже парсил !
+      JSON http.body_str
+    end
+
+    def extract_products(landing_result, category)
+      page = landing_result['page']
+      all_pages = landing_result['pageCount']
+      products = [*landing_result['adverts']]
+
+      (page+1..all_pages).step do |i|
+        res = send_new_request(i, category[:part_request_body])
+        products += res['adverts']
+      end
+
+      category[:products] = products
+      # binding.pry
     end
   end
 
