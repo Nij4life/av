@@ -8,7 +8,6 @@ module AV
   class AV_parser
     @@debag = true
     include Helper
-    attr_reader :result
 
     def initialize(params)
       @start_url = params[:url]
@@ -35,13 +34,13 @@ module AV
       info = {}
       info['id'] = product['id']
       info['url'] = product['publicUrl']
-      info['photos'] = product['photos'].map { |photo| photo['big']['url'] }
-      info['year'] = product['properties'].select { |el| el['value'] if el['id'] == 6 }
-      info['price'] = product['price']['usd'].values { |val| val }.join(': ')
+      info['photos'] = product['photos'].empty? ? [] : product['photos'][0]['big']['url']
+      info['year'] = product['properties'].select { |el| el['id'] == 6 }[0]['value'].to_i
+      info['price'] = product['price']['usd']["amount"]
       info['city'] = product['shortLocationName']
       info['name'] = product['properties'].select { |el| [2, 3, 4].include?(el['id']) }.map { |el| el['value'] }.join(' ')
       info['description'] = product['description']
-
+    rescue
       info
     end
 
@@ -54,14 +53,23 @@ module AV
                               [{"name" => "brand", "value" => id_list[0]}, {"name" => "model", "value" => id_list[1]}]
 
       category = {'part_request_body': part_request_body, products: []}
-      @categories = @categories.merge({"#{category_name}" => category})
+      @categories.merge!(category_name => category)
       category
+    end
+
+    def get_category_name(page)
+      nodes = query_get_elements(page, "//li[@class='breadcrumb-item']").to_a
+      nodes.size < 2 ? (return '') : nodes.shift
+
+      extract_name = -> (*arr) { arr.map {|nok| get_value(nok, './/span').gsub('Купить ', '')}.join(' -> ') }
+
+      extract_name.(*nodes)
     end
 
     def search(url)
       puts "Зашел на url: #{url}"
       uri = get_uri(url)
-      category_name = uri.path.split('/').join('->')
+      category_name = get_category_name(get_nok(url))
 
       response_category = request_category_page(uri.path)
 
@@ -110,15 +118,15 @@ module AV
     end
 
     def create_post_body(page_number, part_request_body)
-      {   "page" => page_number,
-          "properties" => [
-              {"name" => "brands", "property" => 5, "value" => [part_request_body]},
-              {"name" => "price_currency", "value" => 2}
-          ]
+      {"page" => page_number,
+       "properties" => [
+           {"name" => "brands", "property" => 5, "value" => [part_request_body]},
+           {"name" => "price_currency", "value" => 2}
+       ]
       }
     end
 
-    def send_new_request(page_number, part_request_body)
+    def request_products(page_number, part_request_body)
       post_body = create_post_body(page_number, part_request_body)
 
       JSON Curl.post('https://api.av.by/offer-types/cars/filters/main/apply', post_body.to_json) { |curl| add_headers(curl) }.body_str
@@ -132,7 +140,7 @@ module AV
         end_range = response_category['pageCount']
 
         (start_range..end_range).step do |i|
-          products += send_new_request(i, category[:part_request_body])['adverts']
+          products += request_products(i, category[:part_request_body])['adverts']
           # тут была странная ошибка. на audi 121 и выше стр. приходил result['adverts'] == []
         end
       end
