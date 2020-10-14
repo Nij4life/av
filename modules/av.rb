@@ -34,14 +34,12 @@ module AV
       info = {}
       info['id'] = product['id']
       info['url'] = product['publicUrl']
-      info['photos'] = product['photos'].empty? ? [] : product['photos'][0]['big']['url']
+      info['photos'] = product['photos'].dig(0,'big', 'url')
       info['year'] = product['properties'].select { |el| el['id'] == 6 }[0]['value'].to_i
       info['price'] = product['price']['usd']["amount"]
       info['city'] = product['shortLocationName']
       info['name'] = product['properties'].select { |el| [2, 3, 4].include?(el['id']) }.map { |el| el['value'] }.join(' ')
       info['description'] = product['description']
-    rescue
-      info
     end
 
     def add_category(category_name, response_category)
